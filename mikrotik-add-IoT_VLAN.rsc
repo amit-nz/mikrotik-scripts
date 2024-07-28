@@ -31,3 +31,12 @@
 # Optional - add static leases (if any)
 /ip dhcp-server lease
 add mac-address=aa:bb:cc:dd:ee:ff address=192.168.78.2 comment=dehumidifier
+
+# Also Optional - in some cases, IoT devices won't respond to commands coming from outside the subnet 
+# (for e.g. like if your Home Assistant is in your trusted LAN and and your IoT stuff is in another.
+# In this case, use a NAT rule like so 
+# dst-address = IP of host in IoT VLAN
+# out-interface = name of the IoT Interface
+# src-address = IP of the host generating the traffic (e.g. HomeAssistant)
+# to-address = the IP of the router's LAN interface in the IoT VLAN 
+/ip firewall nat add action=src-nat chain=srcnat comment="IoT - Make traffic look like its coming from the same LAN to Host" dst-address=192.168.78.2 out-interface=V222_IoT src-address=192.168.81.2 to-addresses=192.168.78.1
