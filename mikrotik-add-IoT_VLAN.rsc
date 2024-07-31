@@ -28,6 +28,18 @@
 # Firewalling - Prevent untrusted LANs from being able to access other LANs. Adjust ordering if necesary.
 /ip firewall filter add action=drop chain=forward comment="Dont allow traffic into LANPRIVATE from other VLANs" in-interface-list=LAN_Untrusted out-interface-list=LAN
 
+# Enable VLAN filtering on the defconf bridge
+/interface bridge add ingress-filtering=no name=bridge port-cost-mode=short vlan-filtering=yes
+
+# Give the VLAN access to the bridge so it can talk to the "CPU", this allows DHCP functionality. 
+/interface bridge vlan add bridge=bridge comment=V222_IoT tagged="bridge"
+
+# Make it available on port 6 - tagged/trunk mode (and also accept other tagged frames). By default, the port is in "Trunk" mode.
+/interface bridge vlan add bridge=bridge comment=V222_IoT tagged="ether6" vlan-ids=222
+
+# To make it an untagged/access mode - set PVID, and configure it to and discard all other tagged frames
+/interface bridge port add bridge=bridge frame-types=admit-only-untagged-and-priority-tagged interface="ether6" pvid=222
+
 # Optional - add static leases (if any)
 /ip dhcp-server lease
 add mac-address=aa:bb:cc:dd:ee:ff address=192.168.78.2 comment=dehumidifier
@@ -40,3 +52,4 @@ add mac-address=aa:bb:cc:dd:ee:ff address=192.168.78.2 comment=dehumidifier
 # src-address = IP of the host generating the traffic (e.g. HomeAssistant)
 # to-address = the IP of the router's LAN interface in the IoT VLAN 
 /ip firewall nat add action=src-nat chain=srcnat comment="IoT - Make traffic look like its coming from the same LAN to Host" dst-address=192.168.78.2 out-interface=V222_IoT src-address=192.168.81.2 to-addresses=192.168.78.1
+
