@@ -1,7 +1,7 @@
 # Create a new script
 /system/script/add name=ups-monitor-webhook
 
-# Put this in the script:
+# Put this in the script. Replace "https://YOUR_TEAMS_WEBHOOK_URL" with your url on lines 12/14
 :local currentState [/system/ups/get 0 on-line]
 :global lastState
 
@@ -9,13 +9,9 @@
 
 :if ($currentState != $lastState) do={
   :if ($currentState = false) do={
-    /tool fetch http-method=post http-header-field="Content-Type: application/json" \
-    http-data="{\"text\":\"[POWER OUTAGE] Power outage detected — UPS on battery.\"}" \
-    url="https://YOUR_TEAMS_WEBHOOK_URL"
+    /tool fetch http-method=post http-header-field="Content-Type: application/json" http-data=("{\"@type\": \"MessageCard\", \"@context\": \"https://schema.org/extensions\", \"themeColor\": \"ff0000\", \"title\": \"Alert from Mikrotik device " . [/system identity get name] . "\", \"text\": \"Power outage - UPS on battery" . [/system identity get name] . ".\"}") url="https://YOUR_TEAMS_WEBHOOK_URL"
   } else={
-    /tool fetch http-method=post http-header-field="Content-Type: application/json" \
-    http-data="{\"text\":\"[POWER BACK ON] Power restored — UPS back on mains.\"}" \
-    url="https://YOUR_TEAMS_WEBHOOK_URL"
+    /tool fetch http-method=post http-header-field="Content-Type: application/json" http-data=("{\"@type\": \"MessageCard\", \"@context\": \"https://schema.org/extensions\", \"themeColor\": \"36a64f\", \"title\": \"Recovery - Mikrotik device " . [/system identity get name] . "\", \"text\": \"A/C restored" . [/system identity get name] . ".\"}") url="https://YOUR_TEAMS_WEBHOOK_URL"
   }
   :global lastState $currentState
 }
