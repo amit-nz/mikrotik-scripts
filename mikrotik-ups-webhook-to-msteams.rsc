@@ -1,27 +1,42 @@
-# Optional - verify UPS works first
+# Verify UPS works first
 system ups print
 
 # Create a new script
 /system/script/add name=ups-monitor-webhook
 
-# Tell the scheduler to run this script every 10 seconds 
-/system/scheduler/add name=ups-check interval=10s on-event=ups-monitor-webhook
+# Tell the scheduler to run this script every 5 seconds 
+/system/scheduler/add name=ups-check interval=5s on-event=ups-monitor-webhook
 
-# Put this in the script. Replace "https://YOUR_TEAMS_WEBHOOK_URL" with your url
-:local currentState [/system/ups/get 0 on-line]
-:global lastState
-
-:if ([:typeof $lastState] = "nothing") do={ :global lastState $currentState }
-
-:if ($currentState != $lastState) do={
-  :if ($currentState = false) do={
-/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data=(
-"{\"@type\": \"MessageCard\", \"@context\": \"https://schema.org/extensions\", \"themeColor\": \"ff0000\", \"title\": \"Alert from Mikrotik device " . [/system identity get name] . "\", \"text\": \"Power outage - UPS on battery " . [/system identity get name] . ".\", \"sections\": [{\"activityImage\": \"https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/logos/mikrotik-9fxkorisqhnq5ppw9ory2o.png/mikrotik-w4y9rth430h5bcfzp9in8i.png?_a=DATAg1AAZAA0\"}]}"
-) url="https://YOUR_TEAMS_WEBHOOK_URL
-  } else={
-/tool fetch http-method=post http-header-field="Content-Type: application/json" http-data=(
-"{\"@type\": \"MessageCard\", \"@context\": \"https://schema.org/extensions\", \"themeColor\": \"36a64f\", \"title\": \"Recovery - Mikrotik device " . [/system identity get name] . "\", \"text\": \"A/C restored " . [/system identity get name] . ".\", \"sections\": [{\"activityImage\": \"https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/logos/mikrotik-9fxkorisqhnq5ppw9ory2o.png/mikrotik-w4y9rth430h5bcfzp9in8i.png?_a=DATAg1AAZAA0\"}]}"
-) url="https://YOUR_TEAMS_WEBHOOK_URL
-  }
-  :global lastState $currentState
-}
+# Add the script - Replace "https://YOUR_TEAMS_WEBHOOK_URL" with your url - note, this needs a trailing slash for escaping.
+/system script
+add dont-require-permissions=no name=ups-monitor owner=admin policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon source=":local currentState [/system/ups/get 0 on-line]\
+    \n:global lastState\
+    \n\
+    \n:local routerName [/system identity get name]\
+    \n:local webhookUrl \"HTTPS://YOUR_WEBHOOK_GOES_HERE\"\
+    \n\
+    \n:if ([:typeof \$lastState] = \"nothing\") do={\
+    \n    :set lastState \$currentState\
+    \n}\
+    \n\
+    \n:if (\$currentState != \$lastState) do={\
+    \n\
+    \n    :local msg \"\"\
+    \n\
+    \n    :if (\$currentState = false) do={\
+    \n        :set msg (\"\F0\9F\AA\AB UPS on Battery - \" . \$routerName)\
+    \n    } else={\
+    \n        :set msg (\"\E2\9C\85 UPS back on A/C - \" . \$routerName)\
+    \n    }\
+    \n\
+    \n    :local payload (\"{\\\"text\\\":\\\"\" . \$msg . \"\\\"}\")\
+    \n\
+    \n    /tool fetch \\\
+    \n        url=\$webhookUrl \\\
+    \n        http-method=post \\\
+    \n        http-header-field=\"Content-Type: application/json\" \\\
+    \n        http-data=\$payload \\\
+    \n        keep-result=no\
+    \n\
+    \n    :set lastState \$currentState\
+    \n}"
